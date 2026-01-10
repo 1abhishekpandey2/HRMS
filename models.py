@@ -42,7 +42,7 @@ class CandidateProfile(db.Model):
     Extra details only needed during recruitment
     """
     __tablename__ = 'candidate_profiles'
-
+    "hello"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), unique=True)
     dob = db.Column(db.String)
