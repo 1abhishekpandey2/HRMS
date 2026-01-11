@@ -16,7 +16,7 @@ function ProtectedRoute({ children, role }) {
         return res.json();
       })
       .then((data) => {
-        if (data.user.role === role) {
+        if (data && data.user && (data.user.role || '').toLowerCase() === (role || '').toLowerCase()) {
           setAuthorized(true);
         }
         setLoading(false);

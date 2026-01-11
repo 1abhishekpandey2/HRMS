@@ -10,6 +10,7 @@ import AttendanceView from './views/AttendanceView';
 import LeaveView from './views/LeaveView';
 import AttendanceDetailModal from './views/AttendanceDetailModal';
 import { getCurrentUser, getHRUser } from '../../services/auth';
+import { approveLeaveRequest, rejectLeaveRequest, getStats as fetchStats } from '../../services/hr'; // NEW IMPORT
 
 const HRDashboard = () => {
   // ============================================
@@ -38,6 +39,9 @@ const HRDashboard = () => {
   const [currentUser, setCurrentUser] = useState(Data.currentUser);
   // HR user (fetched from users table where role = 'hr')
   const [hrUser, setHrUser] = useState(null);
+
+  // Track which leave request is being updated to disable buttons while processing
+  const [processingLeaveId, setProcessingLeaveId] = useState(null);
 
   useEffect(() => {
     getCurrentUser()
@@ -79,10 +83,43 @@ const HRDashboard = () => {
   // ============================================
   // EVENT HANDLERS
   // ============================================
-  const handleLeaveAction = (id, action) => {
-    setLeaveRequests(leaveRequests.map(req =>
-      req.id === id ? { ...req, status: action } : req
-    ));
+  // Replace local-only handler with an async, backend-updating version
+  const handleLeaveAction = async (id, action) => {
+    // action expected to be 'approved' or 'rejected' (case-insensitive)
+    try {
+      setProcessingLeaveId(id);
+      // normalize action for case-insensitive callers
+      const normalized = String(action).toLowerCase();
+      // call the appropriate service and capture server response
+      const result = (normalized === 'approved') ? await approveLeaveRequest(id) : await rejectLeaveRequest(id);
+
+      // use server response where available to find affected employee
+      const employeePk = result?.leave?.employee_id || result?.leave?.employeeId || null;
+
+      // update local UI after successful backend update (store normalized lowercase status)
+      setLeaveRequests(prev => prev.map(req => (req.id === id ? { ...req, status: normalized } : req)));
+
+      if (employeePk) {
+        setEmployees(prev => prev.map(emp => {
+          if (emp.pk !== employeePk) return emp;
+          const newStatus = normalized === 'approved' ? 'on-leave' : (normalized === 'rejected' ? 'active' : emp.status);
+          return { ...emp, status: newStatus };
+        }));
+      }
+
+      // refresh stats to reflect counts (best-effort)
+      try {
+        const statsResp = await fetchStats();
+        setStats(statsResp);
+      } catch (e) { /* ignore stats refresh errors */ }
+
+    } catch (err) {
+      console.error('Failed to update leave request', err);
+      alert('Failed to update leave request. Please try again.');
+      // optionally refetch leave requests or revert optimistic UI
+    } finally {
+      setProcessingLeaveId(null);
+    }
   };
 
   const handleViewEmployee = (employee) => {
@@ -254,6 +291,7 @@ const HRDashboard = () => {
               departments={departments}
               handleViewEmployee={handleViewEmployee}
               handleLeaveAction={handleLeaveAction}
+              processingLeaveId={processingLeaveId} // NEW PROP
               setActiveSection={setActiveSection}
               currentUser={currentUser}
               hrUser={hrUser}
@@ -288,6 +326,7 @@ const HRDashboard = () => {
             <LeaveView
               leaveRequests={leaveRequests}
               handleLeaveAction={handleLeaveAction}
+              processingLeaveId={processingLeaveId} // NEW PROP
             />
           )}
 

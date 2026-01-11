@@ -5,6 +5,7 @@ import { icons } from './Icons';
 const AttendanceView = ({ handleViewAttendanceDetail, attendance = [], departments = [] }) => {
   const [attendanceFilter, setAttendanceFilter] = useState('all');
   const [attendanceSort, setAttendanceSort] = useState('department');
+  const todayStr = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   // Source data - fallback to static if API didn't return anything yet
   const source = attendance && attendance.length ? attendance : Data.attendanceEmployees;
@@ -49,7 +50,7 @@ const AttendanceView = ({ handleViewAttendanceDetail, attendance = [], departmen
       <div className="section-header-main">
         <div>
           <h2>Attendance Management</h2>
-          <p className="attendance-date">Sunday, January 11, 2026</p>
+          <p className="attendance-date">{todayStr}</p>
         </div>
       </div>
 
