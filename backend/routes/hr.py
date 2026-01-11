@@ -5,7 +5,8 @@ API routes for HR admins.
 """
 
 from flask import Blueprint, request, jsonify, session
-from models import db, Employee, CandidateProfile, Transfer, User
+from datetime import date, datetime, timedelta
+from models import db, Employee, CandidateProfile, Transfer, User, Department, Attendance, LeaveBalance, LeaveRequest, LeaveType
 
 hr_bp = Blueprint(
     'hr',
@@ -15,7 +16,8 @@ hr_bp = Blueprint(
 
 
 def hr_required():
-    return 'user_id' in session and session.get('role') == 'HR'
+    # Allow case-insensitive 'hr' in session role
+    return 'user_id' in session and session.get('role', '').lower() == 'hr'
 
 
 @hr_bp.route('/dashboard', methods=['GET'])
@@ -128,4 +130,153 @@ def transfer_employee():
     return jsonify({
         "message": "Employee transferred successfully",
         "employee_id": employee.id
+    }), 200
+
+
+@hr_bp.route('/employees', methods=['GET'])
+def list_employees():
+    """GET /api/hr/employees
+    Returns employees in a shape suitable for the frontend dashboard.
+    """
+    if not hr_required():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    employees = Employee.query.all()
+    out = []
+    for e in employees:
+        name = f"{e.first_name} {e.last_name}" if e.first_name or e.last_name else None
+        dept = e.department or (e.department_obj.name if e.department_obj else None)
+        joined = None
+        if e.joining_date:
+            try:
+                joined = e.joining_date.strftime('%b %d, %Y')
+            except Exception:
+                joined = str(e.joining_date)
+        out.append({
+            "id": e.employee_code,
+            "name": name,
+            "department": dept,
+            "status": e.status,
+            "position": e.position,
+            "email": e.email,
+            "phone": e.phone,
+            "joinedDate": joined
+        })
+
+    return jsonify({"employees": out}), 200
+
+
+@hr_bp.route('/departments', methods=['GET'])
+def list_departments():
+    if not hr_required():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    depts = Department.query.all()
+    out = []
+    for d in depts:
+        emp_count = len(d.employees) if hasattr(d, 'employees') else 0
+        out.append({
+            "name": d.name,
+            "employees": emp_count,
+            "color": d.color or '#888'
+        })
+
+    return jsonify({"departments": out}), 200
+
+
+@hr_bp.route('/attendance', methods=['GET'])
+def get_attendance():
+    if not hr_required():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    today = date.today()
+    records = Attendance.query.filter_by(date=today).all()
+    out = []
+    one_year_ago = today - timedelta(days=365)
+    for r in records:
+        emp = r.employee
+        if not emp:
+            continue
+        # compute totals
+        lb_sum = db.session.query(db.func.coalesce(db.func.sum(LeaveBalance.used + LeaveBalance.pending), 0)).filter(
+            LeaveBalance.employee_id == emp.id,
+            LeaveBalance.year == today.year
+        ).scalar() or 0
+        late_count = Attendance.query.filter(
+            Attendance.employee_id == emp.id,
+            Attendance.date >= one_year_ago,
+            Attendance.is_late == True
+        ).count()
+        early_count = Attendance.query.filter(
+            Attendance.employee_id == emp.id,
+            Attendance.date >= one_year_ago,
+            Attendance.is_early_leave == True
+        ).count()
+
+        check_in = r.check_in_time.strftime('%I:%M %p') if r.check_in_time else '-'
+        shift_name = r.shift.name if getattr(r, 'shift', None) else '-'
+
+        out.append({
+            "id": emp.employee_code,
+            "name": f"{emp.first_name} {emp.last_name}",
+            "department": emp.department or (emp.department_obj.name if emp.department_obj else None),
+            "shift": shift_name,
+            "status": r.status,
+            "checkIn": check_in,
+            "totalLeaves": float(lb_sum) if lb_sum is not None else 0,
+            "lateArrivals": late_count,
+            "earlyLeaves": early_count
+        })
+
+    return jsonify({"attendance": out}), 200
+
+
+@hr_bp.route('/leave-requests', methods=['GET'])
+def list_leave_requests():
+    if not hr_required():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    reqs = LeaveRequest.query.order_by(LeaveRequest.created_at.desc()).all()
+    out = []
+    for r in reqs:
+        emp = Employee.query.get(r.employee_id)
+        lt = LeaveType.query.get(r.leave_type_id)
+        out.append({
+            "id": r.id,
+            "employeeName": f"{emp.first_name} {emp.last_name}" if emp else None,
+            "leaveType": lt.name if lt else None,
+            "startDate": r.start_date.strftime('%b %d, %Y') if r.start_date else None,
+            "endDate": r.end_date.strftime('%b %d, %Y') if r.end_date else None,
+            "totalDays": float(r.total_days) if r.total_days is not None else None,
+            "reason": r.reason,
+            "status": r.status,
+            "contactDuringLeave": r.contact_during_leave
+        })
+
+    return jsonify({"leaveRequests": out}), 200
+
+
+@hr_bp.route('/stats', methods=['GET'])
+def hr_stats():
+    if not hr_required():
+        return jsonify({"error": "Unauthorized"}), 401
+
+    total_employees = Employee.query.count()
+    today = date.today()
+    present_today = Attendance.query.filter_by(date=today, status='present').count()
+
+    # onLeave: count leave_requests approved and overlapping today
+    on_leave = LeaveRequest.query.filter(
+        LeaveRequest.status == 'approved',
+        LeaveRequest.start_date <= today,
+        LeaveRequest.end_date >= today
+    ).count()
+
+    dept_count = Department.query.count()
+
+    return jsonify({
+        "totalEmployees": total_employees,
+        "presentToday": present_today,
+        "onLeave": on_leave,
+        "departments": dept_count
     }), 200

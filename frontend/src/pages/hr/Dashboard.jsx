@@ -28,8 +28,11 @@ const HRDashboard = () => {
   // ============================================
   // DATA STATE MANAGEMENT
   // ============================================
-  const [employees, setEmployees] = useState(Data.initialEmployees);
-  const [leaveRequests, setLeaveRequests] = useState(Data.initialLeaveRequests);
+  const [employees, setEmployees] = useState([]);
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [attendance, setAttendance] = useState([]);
+  const [stats, setStats] = useState(null);
 
   // Current logged-in user (fetched from backend)
   const [currentUser, setCurrentUser] = useState(Data.currentUser);
@@ -50,12 +53,21 @@ const HRDashboard = () => {
       .then(res => {
         if (res && res.user) {
           setHrUser(res.user);
-          setEmployees(prev => prev.map(emp => emp.name === 'Sarah Johnson' ? { ...emp, name: res.user.name } : emp));
         }
       })
       .catch(err => {
         console.error('Failed to fetch hr user', err);
       });
+
+    // Fetch dynamic HR data
+    import('../../services/hr').then(module => {
+      module.getEmployees().then(resp => setEmployees(resp.employees || [])).catch(console.error);
+      module.getLeaveRequests().then(resp => setLeaveRequests(resp.leaveRequests || [])).catch(console.error);
+      module.getDepartments().then(resp => setDepartments(resp.departments || [])).catch(console.error);
+      module.getAttendance().then(resp => setAttendance(resp.attendance || [])).catch(console.error);
+      module.getStats().then(resp => setStats(resp)).catch(console.error);
+    }).catch(err => console.error('Failed to load HR services', err));
+
   }, []);
 
   // ============================================
@@ -237,6 +249,9 @@ const HRDashboard = () => {
             <DashboardView
               employees={employees}
               leaveRequests={leaveRequests}
+              stats={stats}
+              attendance={attendance}
+              departments={departments}
               handleViewEmployee={handleViewEmployee}
               handleLeaveAction={handleLeaveAction}
               setActiveSection={setActiveSection}

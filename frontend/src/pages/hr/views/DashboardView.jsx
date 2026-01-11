@@ -5,6 +5,9 @@ import { icons } from './Icons';
 const DashboardView = ({ 
   employees, 
   leaveRequests, 
+  stats,
+  attendance,
+  departments,
   handleViewEmployee, 
   handleLeaveAction,
   setActiveSection,
@@ -23,19 +26,41 @@ const DashboardView = ({
 
       {/* Stats Cards */}
       <div className="stats-grid">
-        {Object.entries(Data.stats).map(([key, stat]) => (
-          <div key={key} className="stat-card">
-            <div className="stat-header">
-              <span className="stat-label">{stat.label}</span>
-              {stat.trend !== 0 && (
-                <span className={`trend ${stat.trend > 0 ? 'positive' : 'negative'}`}>
-                  {stat.trend > 0 ? '↑' : '↓'} {Math.abs(stat.trend)}%
-                </span>
-              )}
+        {stats ? (
+          <>
+            <div className="stat-card">
+              <div className="stat-header"><span className="stat-label">Total Employees</span></div>
+              <div className="stat-value">{stats.totalEmployees}</div>
             </div>
-            <div className="stat-value">{stat.value}</div>
-          </div>
-        ))}
+            <div className="stat-card">
+              <div className="stat-header"><span className="stat-label">Present Today</span></div>
+              <div className="stat-value">{stats.presentToday}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-header"><span className="stat-label">On Leave</span></div>
+              <div className="stat-value">{stats.onLeave}</div>
+            </div>
+            <div className="stat-card">
+              <div className="stat-header"><span className="stat-label">Departments</span></div>
+              <div className="stat-value">{stats.departments}</div>
+            </div>
+          </>
+        ) : (
+          // Fallback to static quick stats while loading
+          Object.entries(Data.stats).map(([key, stat]) => (
+            <div key={key} className="stat-card">
+              <div className="stat-header">
+                <span className="stat-label">{stat.label}</span>
+                {stat.trend !== 0 && (
+                  <span className={`trend ${stat.trend > 0 ? 'positive' : 'negative'}`}>
+                    {stat.trend > 0 ? '↑' : '↓'} {Math.abs(stat.trend)}%
+                  </span>
+                )}
+              </div>
+              <div className="stat-value">{stat.value}</div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Quick Content */}
