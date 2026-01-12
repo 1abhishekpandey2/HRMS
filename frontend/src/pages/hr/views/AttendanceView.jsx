@@ -5,7 +5,6 @@ import { icons } from './Icons';
 const AttendanceView = ({ handleViewAttendanceDetail, attendance = [], departments = [] }) => {
   const [attendanceFilter, setAttendanceFilter] = useState('all');
   const [attendanceSort, setAttendanceSort] = useState('department');
-  const todayStr = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
 
   // Source data - fallback to static if API didn't return anything yet
   const source = attendance && attendance.length ? attendance : Data.attendanceEmployees;
@@ -47,11 +46,10 @@ const AttendanceView = ({ handleViewAttendanceDetail, attendance = [], departmen
   return (
     <div className="attendance-view">
       {/* Header */}
-      
       <div className="section-header-main">
         <div>
           <h2>Attendance Management</h2>
-          <p className="attendance-date">{todayStr}</p>
+          <p className="attendance-date">Sunday, January 11, 2026</p>
         </div>
       </div>
 
@@ -192,99 +190,7 @@ const AttendanceView = ({ handleViewAttendanceDetail, attendance = [], departmen
           </select>
         </div>
       </div>
-            <div className="attendance-view">
-    {/* Header */}
-    <div className="section-header-main">
-      <div>
-        <h2>Attendance Management</h2>
-        <p className="attendance-date">{todayStr}</p>
-      </div>
-    </div>
 
-    {/* Stats Cards */}
-    <div className="attendance-stats-grid">
-      <div className="attendance-stat-card">
-        <div className="stat-icon present-icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-        </div>
-        <div className="stat-content">
-          <div className="stat-value-large">{source.filter(s => s.status === 'present').length}</div>
-          <div className="stat-label">Present Today</div>
-        </div>
-      </div>
-      {/* ... (Repeat for Absent, On Leave, Late) ... */}
-    </div>
-
-    {/* NEW VISUAL ANALYSIS SECTION */}
-    <div className="visual-analysis-container">
-      {/* MULTI-LINE GRAPH */}
-      <div className="analysis-card">
-        <div className="card-header-flex">
-          <h3>Performance Trend</h3>
-          <div className="graph-legend">
-            <span className="l-item"><i className="dot leaves"></i> Leaves</span>
-            <span className="l-item"><i className="dot late"></i> Late</span>
-            <span className="l-item"><i className="dot early"></i> Early</span>
-          </div>
-        </div>
-        <div className="svg-container">
-          <svg viewBox="0 0 600 200" className="multi-line-chart">
-            {(() => {
-              const data = Data.generateAttendanceTrend();
-              const getX = (i) => 50 + i * 100;
-              const getY = (val) => 160 - (val * 15);
-              const renderPath = (key, color) => {
-                const points = data.map((d, i) => `${getX(i)},${getY(d[key])}`).join(' ');
-                return <polyline fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" points={points} />;
-              };
-              return (
-                <g>
-                  {renderPath('leaves', '#ef4444')}
-                  {renderPath('late', '#f59e0b')}
-                  {renderPath('early', '#3b82f6')}
-                  {data.map((d, i) => (
-                    <text key={i} x={getX(i)} y="190" textAnchor="middle" fontSize="12" fill="#94a3b8">{d.month}</text>
-                  ))}
-                </g>
-              );
-            })()}
-          </svg>
-        </div>
-      </div>
-
-      {/* 3-MONTH CALENDAR */}
-      <div className="analysis-card">
-        <h3>Last 3 Months Activity</h3>
-        
-        <div className="three-month-grid">
-          {Data.generateThreeMonthCalendar().map((month, mIdx) => (
-            <div key={mIdx} className="calendar-mini-month">
-              <span className="mini-month-name">{month.name}</span>
-              <div className="mini-days-grid">
-                {month.days.map((d, dIdx) => (
-                  <div key={dIdx} className={`mini-day-cell ${d.status}`} title={d.status}></div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
-        <div className="calendar-legend-tiny">
-          <span className="tag-p">Present</span>
-          <span className="tag-l">Leave</span>
-          <span className="tag-lt">Late</span>
-        </div>
-      </div>
-    </div>
-
-    {/* Filters and Employee Grid (rest remains exactly the same) */}
-    <div className="attendance-filters">
-       {/* ... existing filter code ... */}
-    </div>
-
-    <div className="attendance-employees-grid">
-       {/* ... existing employee grid code ... */}
-    </div>
-  </div>
       {/* Employee Cards Grid */}
       <div className="attendance-employees-grid">
         {filteredEmployees.map(emp => (
@@ -332,7 +238,6 @@ const AttendanceView = ({ handleViewAttendanceDetail, attendance = [], departmen
           </div>
         ))}
       </div>
-      
     </div>
   );
 };

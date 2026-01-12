@@ -107,51 +107,41 @@ export const calculatePieSegments = (depts) => {
   });
 };
 
+export const generateEmployeeCalendar = (employee) => {
+  const calendar = [];
+  const today = new Date();
+  for (let month = 2; month >= 0; month--) {
+    const currentDate = new Date(today.getFullYear(), today.getMonth() - month, 1);
+    const daysInMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+    const monthData = {
+      month: currentDate.toLocaleString('default', { month: 'long', year: 'numeric' }),
+      days: []
+    };
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(currentDate.getFullYear(), currentDate.getMonth(), day);
+      const dayOfWeek = date.getDay();
+      let status = 'present';
+      if (dayOfWeek === 0 || dayOfWeek === 6) status = 'weekend';
+      else if (Math.random() < employee.totalLeaves / 200) status = 'leave';
+      else if (Math.random() < employee.lateArrivals / 150) status = 'late';
+      else if (Math.random() < employee.earlyLeaves / 200) status = 'early-leave';
+      monthData.days.push({ day, status });
+    }
+    calendar.push(monthData);
+  }
+  return calendar;
+};
 
-
-// Add these to your DashboardData.js
-
-// Add to DashboardData.js
-
-// Generates data for 3 separate lines: Leaves, Late, and Early Leave
-// Generates random data for 3 distinct lines: Leaves, Late Arrivals, and Early Departures
-export const generateAttendanceTrend = () => {
-  const months = ['Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan'];
+export const generateAttendanceTrend = (employee) => {
+  const months = ['Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan'];
   return months.map(month => ({
     month,
-    leaves: Math.floor(Math.random() * 5),
-    late: Math.floor(Math.random() * 8),
-    early: Math.floor(Math.random() * 6),
+    leaves: Math.floor(Math.random() * 4),
+    lateArrivals: Math.floor(Math.random() * 3),
+    earlyLeaves: Math.floor(Math.random() * 2),
   }));
 };
 
-// Generates a 3-month calendar with specific statuses
-export const generateThreeMonthCalendar = () => {
-  const months = [];
-  const today = new Date();
-  
-  for (let i = 2; i >= 0; i--) {
-    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
-    const monthName = d.toLocaleString('default', { month: 'long' });
-    const daysInMonth = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-    
-    const days = [];
-    for (let day = 1; day <= daysInMonth; day++) {
-      const dayOfWeek = new Date(d.getFullYear(), d.getMonth(), day).getDay();
-      let status = 'present'; 
-      if (dayOfWeek === 0 || dayOfWeek === 6) status = 'weekend';
-      else {
-        const rand = Math.random();
-        if (rand < 0.1) status = 'leave';
-        else if (rand < 0.2) status = 'late';
-        else if (rand < 0.28) status = 'early-leave';
-      }
-      days.push({ day, status });
-    }
-    months.push({ name: monthName, days });
-  }
-  return months;
-};
 // ... (Keep existing imports and exports)
 
 // --- NEW: AI INSIGHTS DATA ---

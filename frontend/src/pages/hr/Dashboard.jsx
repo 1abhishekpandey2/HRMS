@@ -10,7 +10,7 @@ import AttendanceView from './views/AttendanceView';
 import LeaveView from './views/LeaveView';
 import AttendanceDetailModal from './views/AttendanceDetailModal';
 import { getCurrentUser, getHRUser } from '../../services/auth';
-import { approveLeaveRequest, rejectLeaveRequest, getStats as fetchStats } from '../../services/hr'; // NEW IMPORT
+import { approveLeaveRequest, rejectLeaveRequest } from '../../services/hr'; // NEW IMPORT
 
 const HRDashboard = () => {
   // ============================================
@@ -90,29 +90,16 @@ const HRDashboard = () => {
       setProcessingLeaveId(id);
       // normalize action for case-insensitive callers
       const normalized = String(action).toLowerCase();
-      // call the appropriate service and capture server response
-      const result = (normalized === 'approved') ? await approveLeaveRequest(id) : await rejectLeaveRequest(id);
-
-      // use server response where available to find affected employee
-      const employeePk = result?.leave?.employee_id || result?.leave?.employeeId || null;
-
-      // update local UI after successful backend update (store normalized lowercase status)
-      setLeaveRequests(prev => prev.map(req => (req.id === id ? { ...req, status: normalized } : req)));
-
-      if (employeePk) {
-        setEmployees(prev => prev.map(emp => {
-          if (emp.pk !== employeePk) return emp;
-          const newStatus = normalized === 'approved' ? 'on-leave' : (normalized === 'rejected' ? 'active' : emp.status);
-          return { ...emp, status: newStatus };
-        }));
+      // call the appropriate service
+      if (normalized === 'approved') {
+        await approveLeaveRequest(id);
+      } else {
+        await rejectLeaveRequest(id);
       }
-
-      // refresh stats to reflect counts (best-effort)
-      try {
-        const statsResp = await fetchStats();
-        setStats(statsResp);
-      } catch (e) { /* ignore stats refresh errors */ }
-
+      // update local UI after successful backend update (use capitalized status for display)
+      setLeaveRequests(prev =>
+        prev.map(req => (req.id === id ? { ...req, status: normalized === 'approved' ? 'Approved' : 'Rejected' } : req))
+      );
     } catch (err) {
       console.error('Failed to update leave request', err);
       alert('Failed to update leave request. Please try again.');

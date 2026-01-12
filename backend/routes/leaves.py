@@ -1,6 +1,6 @@
-from flask import Blueprint, request, jsonify, session
-from models import db, LeaveRequest, Employee
-from datetime import datetime
+from flask import Blueprint, request, jsonify
+from models import db
+from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 leaves_bp = Blueprint("leaves", __name__, url_prefix="/api")
@@ -20,27 +20,32 @@ def leave_detail(leave_id):
 	# PATCH: update status of leave request
 	data = request.get_json(silent=True) or {}
 	status = data.get("status")
-	if not status or str(status).strip().lower() not in ("approved", "rejected", "pending"):
-		return jsonify({"error": "Invalid or missing status. Allowed: approved, rejected, pending"}), 400
-	status = str(status).strip().lower()
+	allowed = ("Approved", "Rejected", "Pending")
+	if not status or status.capitalize() not in allowed:
+		return jsonify({"error": "Invalid or missing status. Allowed: Approved, Rejected, Pending"}), 400
+	status = status.capitalize()
 
 	try:
-		lr = LeaveRequest.query.get(leave_id)
-		if not lr:
+		stmt = text("UPDATE leave_requests SET status = :status WHERE id = :id")
+		res = db.session.execute(stmt, {"status": status, "id": leave_id})
+		if res.rowcount == 0:
+			db.session.rollback()
 			return jsonify({"error": "Leave request not found"}), 404
-		# update fields
-		lr.status = status
-		if status == 'approved':
-			lr.approved_at = datetime.utcnow()
-			lr.approved_by = session.get('user_id') if 'user_id' in session else None
-			# mark employee on leave
-			emp = Employee.query.get(lr.employee_id)
-			if emp:
-				emp.status = 'on-leave'
-		elif status == 'rejected':
-			lr.rejection_reason = data.get('rejection_reason') or lr.rejection_reason
 		db.session.commit()
-		return jsonify({"leave": {"id": lr.id, "employee_id": lr.employee_id, "status": lr.status, "approved_by": lr.approved_by, "approved_at": lr.approved_at.isoformat() if lr.approved_at else None}}), 200
+		row = db.session.execute(
+			text("SELECT * FROM leave_requests WHERE id = :id"),
+			{"id": leave_id}
+		).fetchone()
+		return jsonify({"leave": dict(row._mapping)}), 200
 	except SQLAlchemyError as e:
 		db.session.rollback()
 		return jsonify({"error": "Database error", "detail": str(e)}), 500
+
+@leaves_bp.route("/leaves", methods=["GET"])
+def get_leaves():
+    try:
+        rows = db.session.execute(text("SELECT * FROM leave_requests")).fetchall()
+        leaves = [dict(row._mapping) for row in rows]
+        return jsonify({"leaves": leaves}), 200
+    except SQLAlchemyError as e:
+        return jsonify({"error": "Database error", "detail": str(e)}), 500

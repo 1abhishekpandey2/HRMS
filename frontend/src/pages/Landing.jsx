@@ -11,6 +11,7 @@ const Landing = () => {
   const [attendanceMarked, setAttendanceMarked] = useState(false);
   const [performanceScore, setPerformanceScore] = useState(0);
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [leaveRequests, setLeaveRequests] = useState([]);
 
   // Simulate live counter updates
   useEffect(() => {
@@ -45,6 +46,17 @@ const Landing = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  // Fetch leave requests
+  useEffect(() => {
+    const fetchLeaveRequests = async () => {
+      const response = await fetch('/api/leaves'); // Adjust the endpoint as necessary
+      const data = await response.json();
+      setLeaveRequests(data.leaves); // Assuming the response has a 'leaves' field
+    };
+
+    fetchLeaveRequests();
+  }, []);
+
   const handleZoneEntry = () => {
     setIsInsideZone(true);
   };
@@ -52,6 +64,40 @@ const Landing = () => {
   const handleMarkAttendance = () => {
     if (isInsideZone) {
       setAttendanceMarked(true);
+    }
+  };
+
+  const handleApproval = async (leaveId) => {
+    const response = await fetch(`/api/leaves/${leaveId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status: 'Approved' }),
+    });
+
+    if (response.ok) {
+      // Update the state to reflect the change
+      setLeaveRequests(prev => prev.map(leave => leave.id === leaveId ? { ...leave, status: 'Approved' } : leave));
+    } else {
+      console.error('Failed to approve leave request');
+    }
+  };
+
+  const handleRejection = async (leaveId) => {
+    const response = await fetch(`/api/leaves/${leaveId}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status: 'Rejected' }),
+    });
+
+    if (response.ok) {
+      // Update the state to reflect the change
+      setLeaveRequests(prev => prev.map(leave => leave.id === leaveId ? { ...leave, status: 'Rejected' } : leave));
+    } else {
+      console.error('Failed to reject leave request');
     }
   };
 

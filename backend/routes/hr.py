@@ -143,10 +143,6 @@ def list_employees():
 
     employees = Employee.query.all()
     out = []
-    today = date.today()
-    # get employee ids currently on approved leave
-    on_leave_ids = {lr.employee_id for lr in LeaveRequest.query.filter(LeaveRequest.status == 'approved', LeaveRequest.start_date <= today, LeaveRequest.end_date >= today).all()}
-    to_update = False
     for e in employees:
         name = f"{e.first_name} {e.last_name}" if e.first_name or e.last_name else None
         dept = e.department or (e.department_obj.name if e.department_obj else None)
@@ -156,30 +152,16 @@ def list_employees():
                 joined = e.joining_date.strftime('%b %d, %Y')
             except Exception:
                 joined = str(e.joining_date)
-        # determine current status dynamically
-        if e.id in on_leave_ids:
-            status_out = 'on-leave'
-            if e.status != 'on-leave':
-                e.status = 'on-leave'
-                to_update = True
-        else:
-            status_out = (e.status or 'active').lower().replace(' ', '-')
-            if e.status == 'on-leave' and e.id not in on_leave_ids:
-                e.status = 'active'
-                to_update = True
         out.append({
-            "pk": e.id,
             "id": e.employee_code,
             "name": name,
             "department": dept,
-            "status": status_out,
+            "status": e.status,
             "position": e.position,
             "email": e.email,
             "phone": e.phone,
             "joinedDate": joined
         })
-    if to_update:
-        db.session.commit()
 
     return jsonify({"employees": out}), 200
 
@@ -261,15 +243,13 @@ def list_leave_requests():
         lt = LeaveType.query.get(r.leave_type_id)
         out.append({
             "id": r.id,
-            "employeeId": r.employee_id,
-            "employeeCode": emp.employee_code if emp else None,
             "employeeName": f"{emp.first_name} {emp.last_name}" if emp else None,
             "leaveType": lt.name if lt else None,
             "startDate": r.start_date.strftime('%b %d, %Y') if r.start_date else None,
             "endDate": r.end_date.strftime('%b %d, %Y') if r.end_date else None,
             "totalDays": float(r.total_days) if r.total_days is not None else None,
             "reason": r.reason,
-            "status": str(r.status).lower() if r.status else None,
+            "status": r.status,
             "contactDuringLeave": r.contact_during_leave
         })
 

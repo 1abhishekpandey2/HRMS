@@ -14,14 +14,13 @@ const DashboardView = ({
   currentUser,
   hrUser
 }) => {
-  const todayStr = new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' });
   return (
     <div className="dashboard-view">
       {/* Welcome Header */}
       <div className="welcome-header">
         <div>
           <h2>Welcome back, {(hrUser?.name || currentUser?.name || Data.currentUser.name).split(' ')[0]} ✨</h2>
-          <p>Here's your HR overview for {todayStr}</p>
+          <p>Here's your HR overview for Sunday, January 11, 2026</p>
         </div>
       </div>
 
